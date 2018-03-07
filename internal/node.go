@@ -129,7 +129,10 @@ func (n *Node) handle(topic string, message *Message, handler MessageHandler) {
 
 	session := redis_lock.LockSession()
 	lockPeriod := 2 * n.heartbeatPeriod
-	lockKey := path.Join(n.channel, "messages", message.Id)
+	lockKey := message.Key
+	if lockKey == "" {
+		lockKey = path.Join(n.channel, "messages", message.Id)
+	}
 	locked, err := redis_lock.RedisLock(n.client, lockKey, session, lockPeriod)
 	if err != nil {
 		n.logger.Error("cpc: error locking node message, %s", err.Error())
@@ -178,8 +181,13 @@ func (n *Node) handle(topic string, message *Message, handler MessageHandler) {
 }
 
 func (n *Node) Cast(topic string, data []byte, load uint64) error {
+	return n.CastWithKey(topic, "", data, load)
+}
+
+func (n *Node) CastWithKey(topic, key string, data []byte, load uint64) error {
 	message := &Message{
 		Id:        uuid.NewV4().String(),
+		Key:       key,
 		Timestamp: time.Now().UnixNano(),
 		Type:      MessageTypeCast,
 		Data:      data,
@@ -193,8 +201,13 @@ func (n *Node) Cast(topic string, data []byte, load uint64) error {
 }
 
 func (n *Node) Call(topic string, data []byte, load uint64, timeout time.Duration) ([]byte, error) {
+	return n.CallWithKey(topic, "", data, load, timeout)
+}
+
+func (n *Node) CallWithKey(topic, key string, data []byte, load uint64, timeout time.Duration) ([]byte, error) {
 	message := &Message{
 		Id:        uuid.NewV4().String(),
+		Key:       key,
 		Timestamp: time.Now().UnixNano(),
 		Type:      MessageTypeCall,
 		Data:      data,

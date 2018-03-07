@@ -40,6 +40,7 @@ func (t *MessageType) UnmarshalJSON(b []byte) error {
 
 type Message struct {
 	Id        string      `json:"id"`
+	Key       string      `json:"key"`
 	Timestamp int64       `json:"timestamp"`
 	Type      MessageType `json:"type"`
 	Data      []byte      `json:"data,omitempty"`
