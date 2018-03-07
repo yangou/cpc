@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,8 @@ type Node struct {
 
 	subscriber *redis.PubSub
 	messages   <-chan *redis.Message
+	ctx        context.Context
+	cancel     context.CancelFunc
 
 	load     int64
 	handlers map[string]MessageHandler
@@ -40,6 +43,7 @@ func (n *Node) Start() {
 
 	n.subscriber = n.client.PSubscribe(path.Join(n.channel, "*"))
 	n.messages = n.subscriber.Channel()
+	n.ctx, n.cancel = context.WithCancel(context.Background())
 
 	for i := 0; i < n.workers; i++ {
 		go n.work()
@@ -48,6 +52,7 @@ func (n *Node) Start() {
 
 func (n *Node) Stop() {
 	n.subscriber.Close()
+	n.cancel()
 	n.wg.Wait()
 
 	n.logger.Info("cpc: stopped node")
@@ -109,7 +114,7 @@ func (n *Node) handle(topic string, message *Message, handler MessageHandler) {
 	}()
 
 	if message.Type == MessageTypeResp {
-		handler(message)
+		handler(n.ctx, message)
 		return
 	}
 
@@ -155,7 +160,7 @@ func (n *Node) handle(topic string, message *Message, handler MessageHandler) {
 		<-stopped
 	}()
 
-	resp := handler(message)
+	resp := handler(n.ctx, message)
 	if resp.Error != "" {
 		n.logger.Error("cpc: error handling node message, %s", resp.Error)
 	}
@@ -202,7 +207,7 @@ func (n *Node) Call(topic string, data []byte, load uint64, timeout time.Duratio
 
 	respCh := make(chan *Message, 1)
 	respTopic := path.Join(topic, message.Id)
-	n.putHandler(respTopic, MessageHandler(func(resp *Message) *Message {
+	n.putHandler(respTopic, MessageHandler(func(ctx context.Context, resp *Message) *Message {
 		respCh <- resp
 		return nil
 	}))
@@ -223,10 +228,10 @@ func (n *Node) Call(topic string, data []byte, load uint64, timeout time.Duratio
 	}
 }
 
-func (n *Node) Handle(topic string, fn func([]byte) ([]byte, error)) {
+func (n *Node) Handle(topic string, fn func(context.Context, []byte) ([]byte, error)) {
 	handler := MessageHandler(
-		func(message *Message) *Message {
-			respData, respErr := fn(message.Data)
+		func(ctx context.Context, message *Message) *Message {
+			respData, respErr := fn(ctx, message.Data)
 			errMessage := ""
 			if respErr != nil {
 				errMessage = respErr.Error()

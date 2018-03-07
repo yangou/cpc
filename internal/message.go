@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -57,4 +58,4 @@ load: %d
 `, m.Id, time.Unix(0, m.Timestamp).Format(time.RFC3339Nano), string(m.Type), string(m.Data), m.Error, m.Load)
 }
 
-type MessageHandler func(*Message) *Message
+type MessageHandler func(context.Context, *Message) *Message

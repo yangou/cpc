@@ -1,6 +1,7 @@
 package cpc
 
 import (
+	"context"
 	"github.com/go-redis/redis"
 	"github.com/yangou/cpc/internal"
 	"time"
@@ -35,4 +36,4 @@ func Call(topic string, data []byte, load uint64, timeout time.Duration) ([]byte
 	return node.Call(topic, data, load, timeout)
 }
 
-func Handle(topic string, fn func([]byte) ([]byte, error)) { node.Handle(topic, fn) }
+func Handle(topic string, fn func(context.Context, []byte) ([]byte, error)) { node.Handle(topic, fn) }
