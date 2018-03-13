@@ -127,41 +127,39 @@ func (n *Node) handle(topic string, message *Message, handler MessageHandler) {
 	n.logger.Info("cpc: node current load %d, waiting for %d milliseconds to compete for message", load, int64(time.Duration(load)*n.loadWaitUnit/time.Millisecond))
 	time.Sleep(time.Duration(load) * n.loadWaitUnit)
 
-	session := redis_lock.LockSession()
-	lockPeriod := 2 * n.heartbeatPeriod
-	lockKey := message.Key
-	if lockKey == "" {
-		lockKey = path.Join(n.channel, "messages", message.Id)
-	}
-	locked, err := redis_lock.RedisLock(n.client, lockKey, session, lockPeriod)
-	if err != nil {
-		n.logger.Error("cpc: error locking node message, %s", err.Error())
-		return
-	} else if !locked {
-		n.logger.Debug("cpc: failed to lock node message, probably owned by peers")
-		return
-	}
+	if message.Key != "" {
+		session := redis_lock.LockSession()
+		lockPeriod := 2 * n.heartbeatPeriod
+		locked, err := redis_lock.RedisLock(n.client, message.Key, session, lockPeriod)
+		if err != nil {
+			n.logger.Error("cpc: error locking node message, %s", err.Error())
+			return
+		} else if !locked {
+			n.logger.Debug("cpc: failed to lock node message, probably owned by peers")
+			return
+		}
 
-	stop := make(chan struct{})
-	stopped := make(chan struct{})
-	go func() {
-		defer close(stopped)
-		for {
-			select {
-			case <-stop:
-				return
-			case <-time.After(n.heartbeatPeriod):
-				extended, err := redis_lock.RedisExtendLock(n.client, lockKey, session, lockPeriod)
-				if !extended {
-					n.logger.Crit("cpc: error extending lock on node message, %s", err.Error())
+		stop := make(chan struct{})
+		stopped := make(chan struct{})
+		go func() {
+			defer close(stopped)
+			for {
+				select {
+				case <-stop:
+					return
+				case <-time.After(n.heartbeatPeriod):
+					extended, err := redis_lock.RedisExtendLock(n.client, message.Key, session, lockPeriod)
+					if !extended {
+						n.logger.Crit("cpc: error extending lock on node message, %s", err.Error())
+					}
 				}
 			}
-		}
-	}()
-	defer func() {
-		close(stop)
-		<-stopped
-	}()
+		}()
+		defer func() {
+			close(stop)
+			<-stopped
+		}()
+	}
 
 	resp := handler(n.ctx, message)
 	if resp.Error != "" {
@@ -198,10 +196,6 @@ func (n *Node) CastWithKey(topic, key string, data []byte, load uint64) error {
 	} else {
 		return n.client.Publish(path.Join(n.channel, topic), string(p)).Err()
 	}
-}
-
-func (n *Node) Call(topic string, data []byte, load uint64, timeout time.Duration) ([]byte, error) {
-	return n.CallWithKey(topic, "", data, load, timeout)
 }
 
 func (n *Node) CallWithKey(topic, key string, data []byte, load uint64, timeout time.Duration) ([]byte, error) {

@@ -36,10 +36,6 @@ func CastWithKey(topic, key string, data []byte, load uint64) error {
 	return node.CastWithKey(topic, key, data, load)
 }
 
-func Call(topic string, data []byte, load uint64, timeout time.Duration) ([]byte, error) {
-	return node.Call(topic, data, load, timeout)
-}
-
 func CallWithKey(topic, key string, data []byte, load uint64, timeout time.Duration) ([]byte, error) {
 	return node.CallWithKey(topic, key, data, load, timeout)
 }
