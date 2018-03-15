@@ -139,6 +139,12 @@ func (n *Node) handle(topic string, message *Message, handler MessageHandler) {
 			return
 		}
 
+		defer func() {
+			if _, err := redis_lock.RedisUnlock(n.client, message.Key, session); err != nil {
+				n.logger.Warn("cpc: failed to unlock node message, %s", err.Error())
+			}
+		}()
+
 		stop := make(chan struct{})
 		stopped := make(chan struct{})
 		go func() {
