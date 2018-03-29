@@ -12,7 +12,7 @@ var EnableLogger = internal.EnableLogger
 var DisableLogger = internal.DisableLogger
 var SetChannel = internal.SetChannel
 var SetWorkers = internal.SetWorkers
-var SetloadWaitUnit = internal.SetloadWaitUnit
+var SetLoadWaitUnit = internal.SetLoadWaitUnit
 var SetHeartbeatPeriod = internal.SetHeartbeatPeriod
 
 func NewNode(client *redis.Client, options ...internal.Option) *internal.Node {

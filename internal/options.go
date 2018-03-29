@@ -36,7 +36,7 @@ func SetWorkers(workers int) Option {
 	})
 }
 
-func SetloadWaitUnit(loadWaitUnit time.Duration) Option {
+func SetLoadWaitUnit(loadWaitUnit time.Duration) Option {
 	return Option(func(n *Node) {
 		n.loadWaitUnit = loadWaitUnit
 	})
