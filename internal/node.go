@@ -9,6 +9,7 @@ import (
 	"github.com/satori/go.uuid"
 	"github.com/yangou/redis_lock"
 	"path"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -109,7 +110,8 @@ func (n *Node) removeHandler(topic string) {
 func (n *Node) handle(topic string, message *Message, handler MessageHandler) {
 	defer func() {
 		if r := recover(); r != nil {
-			n.logger.Crit("cpc: panic handling node message on topic %s %s", topic, message.Dump())
+			n.logger.Crit("cpc: panic handling node message on topic %s %s, %s", topic, message.Dump(), r)
+			n.logger.Crit("%s", debug.Stack())
 		}
 	}()
 
