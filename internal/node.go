@@ -158,7 +158,7 @@ func (n *Node) handle(topic string, message *Message, handler MessageHandler) {
 				case <-time.After(n.heartbeatPeriod):
 					extended, err := redis_lock.RedisExtendLock(n.client, message.Key, session, lockPeriod)
 					if !extended {
-						n.logger.Crit("cpc: error extending lock on node message, %s", err.Error())
+						n.logger.Crit("cpc: error extending lock on node message, %s", err)
 					}
 				}
 			}
